@@ -1,0 +1,23 @@
+# Core Web
+Flask==3.0.3
+python-dotenv==1.0.1
+
+# Data Science & Processing
+pandas==2.2.2
+numpy==1.26.4
+scipy==1.13.0
+
+# AI
+google-genai==0.6.0
+
+# Real-Time & WebSockets
+Flask-SocketIO==5.3.6
+eventlet==0.36.1
+pyserial==3.5
+
+# Database & Persistence
+SQLAlchemy==2.0.30
+Flask-SQLAlchemy==3.1.1
+
+# Interactive Visualization
+plotly==5.22.0
