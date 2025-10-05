@@ -3,3 +3,4 @@
 # ----------------------------------------
 # The .env file must NEVER be committed to Git as it contains your GEMINI_API_KEY.
 .env
+/venv
