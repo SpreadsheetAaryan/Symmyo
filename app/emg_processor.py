@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.signal import butter, filtfilt
 import json
+from gemini_api import insights
 
 # --- Parameters ---
 FS = 1000  # Sampling frequency in Hz
@@ -17,7 +18,7 @@ def butter_bandpass(lowcut, highcut, fs, order=4):
     b, a = butter(order, [low, high], btype='band')
     return b, a
 
-def apply_filter(data, lowcut=20.0, highcut=500.0, fs=FS):
+def apply_filter(data, lowcut=20.0, highcut=499.0, fs=FS):
     """Applies the bandpass filter to the raw data using filtfilt (zero-phase shift)."""
     b, a = butter_bandpass(lowcut, highcut, fs)
     return filtfilt(b, a, data)
@@ -50,7 +51,7 @@ def preprocess_and_analyze(df, threshold, movement_start_ms=1000, movement_end_m
     """
     processed_df = df.copy()
     muscles = ['tensor_fasciae_latae', 'rectus_femoris', 'vastus_lateralis', 'tibialis_anterior', 'soleus', 'gastrocnemius', 'biceps_femoris', 'semitendinosus']
-    channels = [muscle + '_left', muscle + '_right' for muscle in muscles]
+    channels = [muscle + '_left' for muscle in muscles] + [muscle + '_right' for muscle in muscles]
     features = {}
 
     hash_map = {}
@@ -86,13 +87,13 @@ def preprocess_and_analyze(df, threshold, movement_start_ms=1000, movement_end_m
         dominant = 'left' if asym_val < 0 else 'right'
         hash_map[muscle] = (asym_val, dominant)
 
-    for muscle, val in hash_map:
+    for muscle, val in hash_map.items():
         if val[0] > threshold:
             features[f'{muscle}_dominant_side'] = val[1]
             hash_map.pop(muscle)
             
     # Final JSON structure creation
-    final_features = {muscle : val[1] for muscle, val in hash_map}
+    final_features = {muscle : val[1] for muscle, val in hash_map.items()}
     
     # You can also add peak values and dominant side to the JSON if needed
     
@@ -103,9 +104,9 @@ def preprocess_and_analyze(df, threshold, movement_start_ms=1000, movement_end_m
 # 1. Load the Data
 # NOTE: Replace 'raw_emg_data.csv' with your actual data file name
 try:
-    raw_df = pd.read_csv('../csv_data/raw_emg_data.csv')
+    raw_df = pd.read_csv('../csv_data/dummy_data.csv')
 except FileNotFoundError:
-    print("Error: 'raw_emg_data.csv' not found. Please ensure your file is in the same directory.")
+    print("Error: 'dummy_data.csv' not found. Please ensure your file is in the same directory.")
     exit()
 
 # 2. Run the Analysis
@@ -115,12 +116,14 @@ features_json, processed_df = preprocess_and_analyze(raw_df,
                                                     movement_start_ms=1000, 
                                                     movement_end_ms=4000,
                                                     threshold=40)
-
 # 3. Output Results
 
 # Display the features ready for the Gemini API
 print("\n--- Processed Metrics for Gemini API ---")
 print(json.dumps(features_json, indent=2))
+
+response = insights(features_json)
+print(response)
 
 # Save the processed data for Frontend Visualization
 processed_df.to_csv('../preprocessed_data/processed_emg_envelope.csv', index=False)
