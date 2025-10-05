@@ -103,7 +103,7 @@ def preprocess_and_analyze(df, movement_start_ms=1000, movement_end_ms=4000):
 # 1. Load the Data
 # NOTE: Replace 'raw_emg_data.csv' with your actual data file name
 try:
-    raw_df = pd.read_csv('csv_data/raw_emg_data.csv')
+    raw_df = pd.read_csv('../csv_data/raw_emg_data.csv')
 except FileNotFoundError:
     print("Error: 'raw_emg_data.csv' not found. Please ensure your file is in the same directory.")
     exit()
@@ -122,5 +122,5 @@ print("\n--- Processed Metrics for Gemini API ---")
 print(json.dumps(features_json, indent=2))
 
 # Save the processed data for Frontend Visualization
-processed_df.to_csv('preprocessed_data/processed_emg_envelope.csv', index=False)
+processed_df.to_csv('../preprocessed_data/processed_emg_envelope.csv', index=False)
 print("\nProcessed envelope data saved to 'processed_emg_envelope.csv' for plotting/dashboard.")
