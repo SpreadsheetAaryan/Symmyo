@@ -1,9 +1,11 @@
 from flask import Flask, render_template
+import matplotlib.pyplot as plt
+import asyncio
 
 app = Flask(__name__)
 
 @app.route('/')
-def index():
+def index(methods=['GET']):
     return render_template('../templates/index.html')
 
 if __name__ == '__main__':

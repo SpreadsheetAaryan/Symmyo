@@ -17,7 +17,7 @@ def butter_bandpass(lowcut, highcut, fs, order=4):
     b, a = butter(order, [low, high], btype='band')
     return b, a
 
-def apply_filter(data, lowcut=20.0, highcut=450.0, fs=FS):
+def apply_filter(data, lowcut=20.0, highcut=500.0, fs=FS):
     """Applies the bandpass filter to the raw data using filtfilt (zero-phase shift)."""
     b, a = butter_bandpass(lowcut, highcut, fs)
     return filtfilt(b, a, data)
@@ -41,16 +41,19 @@ def calculate_asymmetry(left, right):
     """Calculates percentage asymmetry based on the average activation."""
     # Asymmetry = (|R - L| / ((R + L) / 2)) * 100
     epsilon = 1e-6 # Avoid division by zero
-    return (np.abs(right - left) / ( (right + left) / 2 + epsilon ) ) * 100
+    return ((right - left) / ( (right + left) / 2 + epsilon ) ) * 100
 
-def preprocess_and_analyze(df, movement_start_ms=1000, movement_end_ms=4000):
+def preprocess_and_analyze(df, threshold, movement_start_ms=1000, movement_end_ms=4000):
     """
     Main function to run the full pipeline:
     Filter -> Rectify -> Smooth -> Feature Extraction.
     """
     processed_df = df.copy()
-    channels = ['iliacus_left', 'iliacus_right', 'psoas_left', 'psoas_right']
+    muscles = ['tensor_fasciae_latae', 'rectus_femoris', 'vastus_lateralis', 'tibialis_anterior', 'soleus', 'gastrocnemius', 'biceps_femoris', 'semitendinosus']
+    channels = [muscle + '_left', muscle + '_right' for muscle in muscles]
     features = {}
+
+    hash_map = {}
 
     for channel in channels:
         raw_data = df[channel].values
@@ -75,24 +78,21 @@ def preprocess_and_analyze(df, movement_start_ms=1000, movement_end_ms=4000):
         features[f'{channel}_peak'] = movement_envelope.max()
 
     # 5. Asymmetry Calculation
-    iliacus_asymmetry = calculate_asymmetry(
-        features['iliacus_left_avg'], 
-        features['iliacus_right_avg']
-    )
-    psoas_asymmetry = calculate_asymmetry(
-        features['psoas_left_avg'], 
-        features['psoas_right_avg']
-    )
-    
+    for muscle in muscles:
+        asym_val = calculate_asymmetry(
+            features[f'{muscle}_left_avg'],
+            features[f'{muscle}_right_avg']
+        )
+        dominant = 'left' if asym_val < 0 else 'right'
+        hash_map[muscle] = (asym_val, dominant)
+
+    for muscle, val in hash_map:
+        if val[0] > threshold:
+            features[f'{muscle}_dominant_side'] = val[1]
+            hash_map.pop(muscle)
+            
     # Final JSON structure creation
-    final_features = {
-        "iliacus_left_avg": features['iliacus_left_avg'],
-        "iliacus_right_avg": features['iliacus_right_avg'],
-        "psoas_left_avg": features['psoas_left_avg'],
-        "psoas_right_avg": features['psoas_right_avg'],
-        "asymmetry_iliacus": round(iliacus_asymmetry, 2),
-        "asymmetry_psoas": round(psoas_asymmetry, 2),
-    }
+    final_features = {muscle : val[1] for muscle, val in hash_map}
     
     # You can also add peak values and dominant side to the JSON if needed
     
@@ -113,7 +113,8 @@ except FileNotFoundError:
 # (in milliseconds) if your recording has different movement timings.
 features_json, processed_df = preprocess_and_analyze(raw_df, 
                                                     movement_start_ms=1000, 
-                                                    movement_end_ms=4000)
+                                                    movement_end_ms=4000,
+                                                    threshold=40)
 
 # 3. Output Results
 
